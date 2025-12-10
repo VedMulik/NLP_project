@@ -1,126 +1,142 @@
-Project Overview
+# Political Interview Clarity Classification (CLARITY Task)
 
-Political interviews often contain vague or indirect answers, making it challenging to determine whether a question has been directly addressed. The CLARITY task formalizes this problem by categorizing responses into:
+## Team Members
+- **Shikha Shashikant Masurkar**
+- **Ved Sanjay Mulik**
+- **Jai Damani**
 
-Clear Reply – direct answers to the question
+---
 
-Clear Non-Reply – evasive or non-answers
+## Project Overview
+Political interviews often contain vague, indirect, or evasive responses, making it difficult to determine whether a question has been genuinely answered. This project focuses on the **CLARITY task**, which classifies interview responses into three categories:
 
-Ambivalent – partially informative but deliberately vague responses
+- **Clear Reply (CR):** Directly answers the question.
+- **Clear Non-Reply (CNR):** Avoids or dodges the question.
+- **Ambivalent (AMB):** Partially informative but deliberately vague.
 
-This project explores computational approaches for automatically classifying political interview answers using the QEvasion dataset. We evaluate:
+Using the QEvasion dataset, we evaluate several computational approaches, including:
 
-Classical ML Baseline: TF-IDF features + Logistic Regression
+- Classical machine learning  
+- Embedding-based retrieval  
+- Zero-shot large language models (LLMs)  
+- Hybrid retrieval-augmented generation methods  
 
-Embedding-Based Retrieval: Semantic similarity with SentenceTransformers embeddings and nearest-neighbor label propagation
+---
 
-Zero-Shot LLaMA 3.1 8B: Instruction-tuned LLM with next-token logit scoring for classification
+## Folder Structure
+```
+.
+├── README.md                # Project documentation
+├── classical.py             # TF-IDF + Logistic Regression baseline
+├── classical_model.pkl      # Saved classical model
+├── tfidf_vectorizer.pkl     # Saved TF-IDF vectorizer
+├── load_data.py             # Data loading and preprocessing
+├── non_fine_tune.py         # Zero-shot LLaMA 3.1 8B classification
+├── rag.py                   # Embedding-based retrieval classifier
+├── rag_llm.py               # Hybrid RAG + LLaMA classification
+```
 
-Hybrid RAG + LLaMA: Combining retrieval-based context with LLM reasoning
+---
 
-Repository Structure
-├── data/                  # Dataset files (QEvasion)
-├── notebooks/             # Jupyter notebooks for experiments and analysis
-├── src/                   # Source code for model training and evaluation
-│   ├── baseline.py        # TF-IDF + Logistic Regression
-│   ├── embedding_rag.py   # Embedding-based retrieval classifier
-│   ├── llama_zero_shot.py # Zero-shot LLaMA evaluation
-│   └── hybrid_rag_llama.py# Hybrid RAG + LLaMA approach
-├── results/               # Model outputs and performance reports
-├── README.md              # Project documentation
-└── requirements.txt       # Python dependencies
+## Methods
 
-Setup Instructions
+### 1. Classical Machine Learning Baseline
+Uses **TF-IDF (unigrams + bigrams)** with **Logistic Regression**.
 
-Clone the repository
+- Captures lexical patterns  
+- Performs well for **Ambivalent (AMB)** responses  
+- Struggles with minority **CNR** class  
 
-git clone https://github.com/your-username/clarity-political-nlp.git
-cd clarity-political-nlp
+---
 
+### 2. Embedding-Based Retrieval Classification
+- Uses **SentenceTransformer embeddings**  
+- Nearest-neighbor retrieval + majority-vote classification  
+- Improves recognition of **AMB**  
+- Still challenged by label imbalance  
 
-Install dependencies
+---
 
+### 3. Zero-Shot LLaMA 3.1 8B
+- Uses LLaMA in **next-token logit scoring mode**  
+- Strong predictions for **CR** and **AMB**  
+- Consistently fails to predict **CNR** due to scarcity in dataset  
+
+---
+
+### 4. Hybrid RAG + LLaMA
+- Retrieves similar QA pairs then feeds them into LLaMA for reasoning  
+- Improves **CR recall**  
+- Limited gains for **CNR**, still dominated by class imbalance  
+
+---
+
+## Evaluation Results
+
+| Model                                  | Weighted F1 | Macro F1 | Accuracy | Notes |
+|----------------------------------------|-------------|----------|----------|-------|
+| Classical TF-IDF + Logistic Regression | **0.547**   | 0.458    | 0.529    | Strong baseline; struggles with minority class |
+| RAG-Style Embedding                    | 0.546       | 0.457    | 0.533    | Slight improvement on AMB |
+| Zero-Shot LLaMA 3.1 8B                 | **0.573**   | 0.366    | **0.591** | Best accuracy; predicts no CNR |
+| Hybrid RAG + LLaMA                     | 0.529       | 0.340    | 0.529    | Better CR recall; CNR still weak |
+
+### Interpretation
+- Classical and embedding-based models remain competitive on small datasets.  
+- LLM zero-shot approaches achieve higher overall accuracy but fail on minority classes.  
+- Hybrid methods help stabilize results but cannot fully overcome data imbalance.  
+
+---
+
+## How to Run
+
+### 1. Install Dependencies
+```bash
 pip install -r requirements.txt
+```
 
+### 2. Load and Preprocess Data
+```bash
+python load_data.py
+```
 
-Data
+### 3. Run Models
 
-Place QEvasion dataset files in the data/ directory.
+#### Classical Baseline
+```bash
+python classical.py --train data/train.csv --test data/test.csv
+```
 
-Ensure files are properly formatted as question–answer pairs with corresponding labels.
+#### Embedding-Based Retrieval
+```bash
+python rag.py --train data/train.csv --test data/test.csv
+```
 
-Run Models
+#### Zero-Shot LLaMA
+```bash
+python non_fine_tune.py --test data/test.csv
+```
 
-Classical Baseline:
+#### Hybrid RAG + LLaMA
+```bash
+python rag_llm.py --train data/train.csv --test data/test.csv
+```
 
-python src/baseline.py --train data/train.csv --test data/test.csv
+### 4. Load Pretrained Classical Model
+```python
+import pickle
 
+with open("classical_model.pkl", "rb") as f:
+    model = pickle.load(f)
 
-Embedding-Based Retrieval:
+with open("tfidf_vectorizer.pkl", "rb") as f:
+    vectorizer = pickle.load(f)
+```
 
-python src/embedding_rag.py --train data/train.csv --test data/test.csv
+---
 
+## Limitations
+- Dataset imbalance heavily affects the minority **CNR** class.  
+- LLaMA zero-shot models tend to default to **AMB** due to class distribution.  
+- Models do not incorporate deeper discourse or conversational context.  
+- Retrieval-based methods rely strongly on nearest-neighbor quality.  
 
-Zero-Shot LLaMA:
-
-python src/llama_zero_shot.py --test data/test.csv
-
-
-Hybrid RAG + LLaMA:
-
-python src/hybrid_rag_llama.py --train data/train.csv --test data/test.csv
-
-Evaluation Metrics
-
-We report model performance using:
-
-Precision, Recall, F1-Score for each class
-
-Macro F1 – averages performance across all classes
-
-Weighted F1 – accounts for class imbalance
-
-Accuracy – overall proportion of correct predictions
-
-Key Findings
-Model	Macro F1	Weighted F1	Accuracy	Notes
-TF-IDF + Logistic Regression	0.458	0.547	0.529	Good on majority class; struggles with Clear Non-Reply
-RAG Embedding Classifier	0.457	0.546	0.532	Slight improvement for minority class; semantic retrieval helps
-Zero-Shot LLaMA 3.1 8B	0.366	0.573	0.591	Strong overall accuracy; fails to predict minority class
-Hybrid RAG + LLaMA	0.340	0.529	0.529	Improves recall for Clear Reply; limited effect on Clear Non-Reply
-
-Insights:
-
-Classical and embedding-based methods remain competitive for small datasets.
-
-Zero-shot LLMs excel in overall accuracy but struggle with minority classes due to imbalance.
-
-Hybrid retrieval provides contextual grounding but cannot fully compensate for underrepresented classes.
-
-Limitations
-
-Severe class imbalance in QEvasion dataset
-
-Zero-shot LLMs may default to majority class without fine-tuning
-
-Contextual information beyond question-answer pairs is not considered
-
-Retrieval methods are dependent on embedding quality and coverage
-
-Future Work
-
-Fine-tuning LLMs with task-specific supervision
-
-Incorporating conversational context and discourse-level features
-
-Using data augmentation or rebalancing for minority classes
-
-Exploring contrastive learning or specialized architectures for subtle evasive answers
-
-Acknowledgements
-
-CSCI 5832 (Natural Language Processing) – University of Colorado Boulder for guidance and support
-
-QEvasion dataset creators for providing labeled political interviews
-
-Developers of Hugging Face Transformers, SentenceTransformers, and Python ML ecosystem
